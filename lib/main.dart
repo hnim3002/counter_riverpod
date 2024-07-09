@@ -41,7 +41,6 @@ class MyApp extends StatelessWidget {
 class MyHomePage extends ConsumerStatefulWidget {
   const MyHomePage({super.key, required this.title});
 
-
   final String title;
 
   @override
@@ -49,53 +48,87 @@ class MyHomePage extends ConsumerStatefulWidget {
 }
 
 class _MyHomePageState extends ConsumerState<MyHomePage> {
-
-
   void _incrementCounter() {
     ref.read(counterNotifierProvider.notifier).increment();
   }
 
   void _decrementCounter() {
+    final variable = ref.read(counterNotifierProvider);
+    final variable2 = ref.read(counterNotifierProvider.notifier);
+
+    // variable2.decrement();
     ref.read(counterNotifierProvider.notifier).decrement();
+  }
+
+  void _onBack() {
+    final lastValue = ref.read(counterNotifierProvider);
+    print("lastValue: $lastValue");
+    Navigator.of(context).pop();
+  }
+
+  void _forceError() {
+    ref.read(counterNotifierProvider.notifier).forceError();
+  }
+
+  @override
+  void initState() {
+    super.initState();
   }
 
   @override
   Widget build(BuildContext context) {
+    final asyncValue = ref.watch(counterNotifierProvider);
+    ref.listen(counterNotifierProvider, (prev, next) {
+      if (next is AsyncError) {
+        showDialog(
+          context: context,
+          builder: (context) {
+            return AlertDialog(
+              content: Text("Something went wrong: ${next.error}"),
+            );
+          },
+        );
+      }
+    });
 
-    final int counter = ref.watch(counterNotifierProvider);
+    print("asyncValue: $asyncValue");
 
     return Scaffold(
       appBar: AppBar(
-
         backgroundColor: Theme.of(context).colorScheme.inversePrimary,
-
         title: Text(widget.title),
       ),
       body: Center(
-
         child: Column(
-
           mainAxisAlignment: MainAxisAlignment.center,
           children: <Widget>[
             const Text(
               'You have pushed the button this many times:',
             ),
-            Text(
-              '$counter',
-              style: Theme.of(context).textTheme.headlineMedium,
-            ),
+            if (asyncValue is AsyncLoading) const CircularProgressIndicator(),
+            if (asyncValue is AsyncData)
+              Text(
+                '${asyncValue.valueOrNull?.value}',
+                style: Theme.of(context).textTheme.headlineMedium,
+              ),
             TextButton(
-                onPressed: _decrementCounter,
-                child: Text('Decrement'))
-
+                onPressed: _decrementCounter, child: const Text('Decrement')),
+            TextButton(onPressed: _onBack, child: const Text('BACK')),
+            TextButton(onPressed: _forceError, child: const Text('FORCE ERROR'))
           ],
         ),
       ),
       floatingActionButton: FloatingActionButton(
-        onPressed: _incrementCounter,
+        onPressed: asyncValue is AsyncLoading ? null : _incrementCounter,
         tooltip: 'Increment',
         child: const Icon(Icons.add),
       ), // This trailing comma makes auto-formatting nicer for build methods.
     );
+  }
+
+  @override
+  void dispose() {
+    print("MyHomePage widget disposed!");
+    super.dispose();
   }
 }
